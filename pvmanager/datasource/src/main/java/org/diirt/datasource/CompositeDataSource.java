@@ -4,7 +4,12 @@
  */
 package org.diirt.datasource;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -222,7 +227,23 @@ public class CompositeDataSource extends DataSource {
         return splitRecipes;
     }
 
-    private DataSource retrieveDataSource(String name) {
+    private synchronized DataSource retrieveDataSource(String name) {
+
+
+        // There is a BUG in MultiBEAST initialization process.
+        // OPIRunner creates widgets in a sequential way, but the CompositeAlarmClientModel needs to be initialized before any other AlarmClientModel.
+        // The CompositeAlarmClientModel is created only by the BeastDataSource constructor,
+        // then this to force the beast  DataSource initialization before crating any other DataSource
+        // This hack works together with another hack in AlarmClientModel.getInstance() method.
+        // TODO: This hack will be removed when we can assure a proper initialization process
+        if(!name.equals("beast") && !dataSources.containsKey("beast")) {
+            try {
+                retrieveDataSource("beast");
+            } catch (Exception e) {
+                log.log(Level.INFO, e, ()->"Failed to preventively retrieve DataSource beast");
+            }
+        }
+
         DataSource dataSource = dataSources.get(name);
         if (dataSource == null) {
             DataSourceProvider factory = dataSourceProviders.get(name);
@@ -233,7 +254,10 @@ public class CompositeDataSource extends DataSource {
                 if (dataSource == null) {
                     throw new IllegalStateException("DataSourceProvider '" + name + conf.delimiter + "' did not create a valid datasource.");
                 }
-                dataSources.put(name, dataSource);
+                DataSource old = dataSources.put(name, dataSource);
+                if(old!=null) {
+                    System.out.println("Datasource "+name+" created twice!");
+                }
                 log.log(Level.CONFIG, "Created instance for data source {0} ({1})", new Object[]{name, dataSource.getClass().getSimpleName()});
             }
         }
