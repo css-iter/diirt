@@ -227,22 +227,7 @@ public class CompositeDataSource extends DataSource {
         return splitRecipes;
     }
 
-    private synchronized DataSource retrieveDataSource(String name) {
-
-
-        // There is a BUG in MultiBEAST initialization process.
-        // OPIRunner creates widgets in a sequential way, but the CompositeAlarmClientModel needs to be initialized before any other AlarmClientModel.
-        // The CompositeAlarmClientModel is created only by the BeastDataSource constructor,
-        // then this to force the beast  DataSource initialization before crating any other DataSource
-        // This hack works together with another hack in AlarmClientModel.getInstance() method.
-        // TODO: This hack will be removed when we can assure a proper initialization process
-        if(!name.equals("beast") && !dataSources.containsKey("beast")) {
-            try {
-                retrieveDataSource("beast");
-            } catch (Exception e) {
-                log.log(Level.INFO, e, ()->"Failed to preventively retrieve DataSource beast");
-            }
-        }
+    public synchronized DataSource retrieveDataSource(String name) {
 
         DataSource dataSource = dataSources.get(name);
         if (dataSource == null) {
@@ -254,10 +239,7 @@ public class CompositeDataSource extends DataSource {
                 if (dataSource == null) {
                     throw new IllegalStateException("DataSourceProvider '" + name + conf.delimiter + "' did not create a valid datasource.");
                 }
-                DataSource old = dataSources.put(name, dataSource);
-                if(old!=null) {
-                    System.out.println("Datasource "+name+" created twice!");
-                }
+                dataSources.put(name, dataSource);
                 log.log(Level.CONFIG, "Created instance for data source {0} ({1})", new Object[]{name, dataSource.getClass().getSimpleName()});
             }
         }
