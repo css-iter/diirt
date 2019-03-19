@@ -227,7 +227,7 @@ public class CompositeDataSource extends DataSource {
         return splitRecipes;
     }
 
-    public synchronized DataSource retrieveDataSource(String name) {
+    public DataSource retrieveDataSource(String name) {
 
         DataSource dataSource = dataSources.get(name);
         if (dataSource == null) {
